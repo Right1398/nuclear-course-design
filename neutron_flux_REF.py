@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import csv
 import os
-
+import threading
 
 import matplotlib.cm as cm
 from matplotlib.colors import LogNorm
@@ -288,36 +288,37 @@ class matrixProcess(Point):
         return(Psi_matrix)
     
     def CalculateAll(self):
-        time1 = time.time()
+        #time1 = time.time()
         self.CalculateKDD()
-        time2 = time.time()
-        print('KDD %f'%(time2-time1))
+        #time2 = time.time()
+        #print('KDD %f'%(time2-time1))
 
         self.CalculateKDE()
-        time3 = time.time()
-        print('KDE %f'%(time3-time2))
+        #time3 = time.time()
+        #print('KDE %f'%(time3-time2))
 
 
         self.CalculateKBD()
-        time4 = time.time()
-        print('KBD %f'%(time4-time3))
+        #time4 = time.time()
+        #print('KBD %f'%(time4-time3))
 
         self.CalculateKBE()
-        time5 = time.time()
-        print('KBE %f'%(time5-time4))
+        #time5 = time.time()
+        #print('KBE %f'%(time5-time4))
 
         self.coefficient_matrix = np.vstack((np.hstack((self.KDD, self.KDE)),np.hstack((self.KBD, self.KBE))))
         self.inv_coefficient_matrix = np.linalg.inv(self.coefficient_matrix)
 
 
-        time6 = time.time()
-        print('inv_coefficient_matrix %f'%(time6-time5))
+        #time6 = time.time()
+        #print('inv_coefficient_matrix %f'%(time6-time5))
 
         self.CalculatePsimatrix()    
-        time7 = time.time()
-        print('CalculatePsimatrix %f'%(time7-time6))
+        #time7 = time.time()
+        #print('CalculatePsimatrix %f'%(time7-time6))
 
         return(self)    
+
 
 def Solve(c,a,xi,yi,i,integrate_matrix_list):
 
@@ -383,7 +384,7 @@ class DrawAndData():
         plt.scatter(self.x_values,self.y_values)
         plt.xlim((-10,60))
         plt.ylim((-10,60))
-        file_name = FILE_NAME + '/_Random.png'
+        file_name = FILE_NAME + '/Random.png'
         plt.savefig(file_name)
 
         plt.close()
@@ -397,76 +398,92 @@ class DrawAndData():
         X, Y = np.meshgrid(X, Y)
         z_val = np.array(a_matrix)[:,0]
 
-    
-
-       
-
         ax.plot_surface(X, Y, self.Z)
         plt.show()
     
     def PlotHeat(self):
         plt.imshow(self.Z,interpolation = 'nearest' , cmap = 'jet')
         plt.colorbar()
-        file_name = FILE_NAME + '/_Heat.png'
+        file_name = FILE_NAME + '/Heat.png'
         plt.savefig(file_name)
 
         plt.close()
 
-    def FileOutput(self, lamda):
-        file_name = self.file_name + '_data.csv'
+    def FileOutput(self, lamda, iterationFlag):
+        file_name = self.file_name + 'data.csv'
 
-        with open(file_name,'a+') as f:
+        with open(file_name,'a+',newline='') as f:
             csv_write = csv.writer(f)
-            data_row = ["x:",self.x_var,self.x_mean,"y:",self.y_var,self.y_mean,"lamda:",lamda]
+            data_row = ["x:",self.x_var,self.x_mean,"y:",self.y_var,self.y_mean,"lamda:",lamda,'iteration flag',iterationFlag]
+        
+            csv_write.writerow(data_row)
+
+    def LamdaOutput(self, lamda):
+        file_name = FILE_NAME + '/lamda.csv'
+
+        with open(file_name,'a+',newline='') as f:
+            csv_write = csv.writer(f)
+            data_row = [lamda]
         
             csv_write.writerow(data_row)
 
     
 
 def main():   
-    initial_time = time.time()
+    #initial_time = time.time()
     initial_points = PointProcess().setPoint(INNER_POINTS_NUMBER,SURFACE_POINTS_NUMBER,OUTSIDE_POINTS_NUMBER)
 
     draw = DrawAndData(initial_points)
     draw.PlotRandomPoint()
 
-    print('PointProcess %f'%(time.time() - initial_time))
-    time1 = time.time()
+    #print('PointProcess %f'%(time.time() - initial_time))
+    #time1 = time.time()
     matrix = matrixProcess(initial_points, c_constant).CalculateAll()
-    print('MatrixProcess %f'%(time.time() - time1))
+    #print('MatrixProcess %f'%(time.time() - time1))
     f_matrix_before = np.vstack((np.ones((EXPECT_OUTSIDE_POINTS_NUMBER,1)),np.zeros((OUTSIDE_POINTS_NUMBER,1))))
     
     x = x_constant
     lamda = init_lamda
     lamda_before = init_lamda
-    time2 = time.time()
+    #time2 = time.time()
     integrate_coefficient_matrix = IntegrateCoefficientMatrix(initial_points)
 
 
-    print('solve Process %f'%(time.time() - time2))
+    #print('solve Process %f'%(time.time() - time2))
     a_matrix_before = np.ones((POINTS_NUMBER,1))
 
-    
+    iteration_flag = False
 
-    for i in range(1000):
+    for i in range(10000):
         a_matrix = x / lamda * np.dot(matrix.inv_coefficient_matrix, f_matrix_before)  #A matrix
 
         f_matrix_no_zeros = nu * Sigma_f * np.dot(matrix.Psi_matrix, a_matrix)
         f_matrix = np.vstack((f_matrix_no_zeros,np.zeros((OUTSIDE_POINTS_NUMBER,1))))
 
         lamda = lamda_before *(np.dot(integrate_coefficient_matrix, a_matrix) / np.dot(integrate_coefficient_matrix, a_matrix_before))
+        if np.isnan(np.min(a_matrix)):
+            #np.nan_to_num(a_matrix)
+            lamda = np.NaN
+            break
+        #print(lamda)
 
-        print(lamda)
-        
+        draw.LamdaOutput(lamda[0][0])
+        '''
+        lamda_output = threading.Thread(target=draw.LamdaOutput,args=(lamda[0][0],))
+        lamda_output.start()
+        lamda_output.join()        
+        '''
+
         f_matrix_before = f_matrix
         a_matrix_before = a_matrix
         if abs(lamda_before - lamda) < 0.00001:
+            iteration_flag =True
             break
         lamda_before = lamda
 
     draw.CalculateZ(a_matrix)
     draw.PlotHeat()
-    draw.FileOutput(lamda)
+    draw.FileOutput(lamda[0][0],iteration_flag)
 
 def FlushConstant(innerPointsNumber,surfacePointsNumber,times):
     global INNER_POINTS_NUMBER
@@ -491,10 +508,12 @@ INNER_POINTS_NUMBER_LIST = [c for c in range(50,1000,50)] + [c for c in range(10
 SURFACE_POINTS_NUMBER_LIST = [10] + [c for c in range(25,100,25)] + [c for c in range(100,4050,50)]
 for i in range(len(INNER_POINTS_NUMBER_LIST)):
     for j in range(len(SURFACE_POINTS_NUMBER_LIST)):
-        for times in range(10):     
-            if __name__ == '__main__':
+        for times in range(50):     
+                if __name__ == '__main__':
 
-                FlushConstant(INNER_POINTS_NUMBER_LIST[i],SURFACE_POINTS_NUMBER_LIST[j],times)           
-
-                main()
-
+                    FlushConstant(INNER_POINTS_NUMBER_LIST[i],SURFACE_POINTS_NUMBER_LIST[j],times)           
+                    initial_time = time.time()
+                    main()
+                    finish_time = time.time()
+                    print('a = %d, inner = %d, outside = %d, c = %d, times = %d , time = %fs'%
+                         (a_constant, INNER_POINTS_NUMBER, OUTSIDE_POINTS_NUMBER, c_constant, (times + 1), (finish_time - initial_time)))
