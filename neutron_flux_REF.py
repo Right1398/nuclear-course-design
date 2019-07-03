@@ -461,9 +461,9 @@ def main():
         f_matrix = np.vstack((f_matrix_no_zeros,np.zeros((OUTSIDE_POINTS_NUMBER,1))))
 
         lamda = lamda_before *(np.dot(integrate_coefficient_matrix, a_matrix) / np.dot(integrate_coefficient_matrix, a_matrix_before))
-        if np.isnan(np.min(a_matrix)):
+        if np.isnan(np.min(a_matrix)) or lamda == 0:
             #np.nan_to_num(a_matrix)
-            lamda = np.NaN
+            lamda = [[np.NaN]]
             break
         #print(lamda)
 
@@ -508,6 +508,8 @@ INNER_POINTS_NUMBER_LIST = [c for c in range(50,1000,50)] + [c for c in range(10
 SURFACE_POINTS_NUMBER_LIST = [10] + [c for c in range(25,100,25)] + [c for c in range(100,4050,50)]
 for i in range(len(INNER_POINTS_NUMBER_LIST)):
     for j in range(len(SURFACE_POINTS_NUMBER_LIST)):
+        if 7 * INNER_POINTS_NUMBER_LIST[i] < SURFACE_POINTS_NUMBER_LIST[j]:
+            break
         for times in range(50):     
                 if __name__ == '__main__':
 
