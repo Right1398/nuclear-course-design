@@ -419,13 +419,16 @@ class DrawAndData():
             csv_write.writerow(data_row)
 
     def LamdaOutput(self, lamda):
+        
         file_name = FILE_NAME + '/lamda.csv'
-
+        '''
         with open(file_name,'a+',newline='') as f:
             csv_write = csv.writer(f)
             data_row = [lamda]
         
             csv_write.writerow(data_row)
+        '''
+        np.savetxt(file_name, lamda,delimiter=',')
 
     
 
@@ -448,6 +451,7 @@ def main():
     #time2 = time.time()
     integrate_coefficient_matrix = IntegrateCoefficientMatrix(initial_points)
 
+    lamda_array = np.array([lamda])
 
     #print('solve Process %f'%(time.time() - time2))
     a_matrix_before = np.ones((POINTS_NUMBER,1))
@@ -461,13 +465,17 @@ def main():
         f_matrix = np.vstack((f_matrix_no_zeros,np.zeros((OUTSIDE_POINTS_NUMBER,1))))
 
         lamda = lamda_before *(np.dot(integrate_coefficient_matrix, a_matrix) / np.dot(integrate_coefficient_matrix, a_matrix_before))
+        
+
         if np.isnan(np.min(a_matrix)) or lamda == 0:
             #np.nan_to_num(a_matrix)
-            lamda = [[np.NaN]]
+            lamda_array = np.append(lamda_array, [[np.NaN]])
             break
+        
+        lamda_array = np.append(lamda_array, lamda[0][0])
         #print(lamda)
 
-        draw.LamdaOutput(lamda[0][0])
+        #draw.LamdaOutput(lamda[0][0])
         '''
         lamda_output = threading.Thread(target=draw.LamdaOutput,args=(lamda[0][0],))
         lamda_output.start()
@@ -480,6 +488,8 @@ def main():
             iteration_flag =True
             break
         lamda_before = lamda
+    
+    draw.LamdaOutput(lamda_array)
 
     draw.CalculateZ(a_matrix)
     draw.PlotHeat()
