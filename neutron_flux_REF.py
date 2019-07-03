@@ -6,8 +6,9 @@ import multiprocessing
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import csv
+import os
 
-#热图
+
 import matplotlib.cm as cm
 from matplotlib.colors import LogNorm
 
@@ -33,11 +34,14 @@ init_lamda = 1.0
 
 
 #points number
+
 INNER_POINTS_NUMBER = 400
 SURFACE_POINTS_NUMBER = 60
 OUTSIDE_POINTS_NUMBER = 60
 EXPECT_OUTSIDE_POINTS_NUMBER = INNER_POINTS_NUMBER + SURFACE_POINTS_NUMBER
 POINTS_NUMBER = INNER_POINTS_NUMBER + SURFACE_POINTS_NUMBER + OUTSIDE_POINTS_NUMBER
+
+FILE_NAME = ''
 
 class Point():
     x = 0.0
@@ -104,9 +108,7 @@ class PointProcess(Point):
     def setPoint(self, innerPointNum = 4, surfacePointNum = 4, outsidePointNum = 4):
 
         points = Points()
-        
-        #for i in range(innerPointNum):
-        #    points.inner_points.append(self.creatPoint('inner'))
+
         points.inner_points = [self.creatPoint('inner') for i in range(innerPointNum)]
 
         points.left_points = [(Point(0, self.creatPoint('surface'))) for i in range(round(surfacePointNum / 4))]
@@ -114,9 +116,6 @@ class PointProcess(Point):
         points.right_points = [Point(a_constant, self.creatPoint('surface')) for i in range(round(surfacePointNum / 4))]
         points.up_points = [(Point(self.creatPoint('surface'), a_constant)) for i in range(surfacePointNum - 3 * round(surfacePointNum / 4))]
 
-        #for k in range(outsidePointNum):
-        #    points.outside_points.append(self.creatPoint('outside'))
-        
         points.outside_points = [self.creatPoint('outside') for i in range(outsidePointNum)]
                 
 
@@ -165,24 +164,8 @@ class matrixProcess(Point):
         self.c = c
     
     def CalculateKDD(self):
-        #KDD = np.zeros((EXPECT_OUTSIDE_POINTS_NUMBER, EXPECT_OUTSIDE_POINTS_NUMBER))
-        
 
-        
         c = self.c
-        '''
-        for i in range(EXPECT_OUTSIDE_POINTS_NUMBER):
-            xi = self.points.expect_outside_points[i].x
-            yi = self.points.expect_outside_points[i].y
-            for j in range(EXPECT_OUTSIDE_POINTS_NUMBER):
-
-                xj = self.points.expect_outside_points[j].x
-                yj = self.points.expect_outside_points[j].y
-
-                KDD[i][j] = (-D_constant * ((xi - xj) ** 2 + (yi - yj) ** 2 + 2 * c ** 2) /(((xi - xj) ** 2 + (yi - yj) ** 2 + c ** 2) ** 1.5) +
-                            Sigma_r * (((xi - xj) ** 2 + (yi - yj) ** 2 + c ** 2) ** 0.5))
-        self.KDD = KDD
-        '''
 
 
         matrix_square = np.sum(self.points.expect_outside_points_array ** 2, axis=1).reshape(EXPECT_OUTSIDE_POINTS_NUMBER,1)
@@ -191,26 +174,13 @@ class matrixProcess(Point):
         matrix_minus_squere_sum = matrix_square_sum - 2 * matrix_dot
         kdd = -D_constant * (matrix_minus_squere_sum + 2 * c ** 2)/(matrix_minus_squere_sum + c ** 2) ** 1.5 + Sigma_r * (matrix_minus_squere_sum + c ** 2) ** 0.5
 
-
-
         self.KDD = kdd
         return(self.KDD)
 
     def CalculateKDE(self):
-        #KDE = np.zeros((EXPECT_OUTSIDE_POINTS_NUMBER, OUTSIDE_POINTS_NUMBER))
-        c = self.c
-        '''
-        for i in range(EXPECT_OUTSIDE_POINTS_NUMBER):
-            xi = self.points.expect_outside_points[i].x
-            yi = self.points.expect_outside_points[i].y
-            for j in range(OUTSIDE_POINTS_NUMBER):
-                xj = self.points.outside_points[j].x
-                yj = self.points.outside_points[j].y
 
-                KDE[i][j] = (-D_constant * ((xi - xj) ** 2 + (yi - yj) ** 2 + 2 * c ** 2) /(((xi - xj) ** 2 + (yi - yj) ** 2 + c ** 2) ** 1.5) +
-                            Sigma_r * (((xi - xj) ** 2 + (yi - yj) ** 2 + c ** 2) ** 0.5))
-        self.KDE = KDE
-        '''
+        c = self.c
+
         matrix_square_expect_outside_points = np.sum(self.points.expect_outside_points_array ** 2, axis=1).reshape(EXPECT_OUTSIDE_POINTS_NUMBER,1)
         matrix_square_outside_points = np.sum(self.points.outside_points_array ** 2, axis=1).reshape(1,OUTSIDE_POINTS_NUMBER)
         matrix_square_sum = matrix_square_expect_outside_points + matrix_square_outside_points
@@ -220,7 +190,7 @@ class matrixProcess(Point):
         self.KDE = kde
         return(self.KDE)
 
-    def CalculateKBD(self): #2
+    def CalculateKBD(self): 
         KBD = np.zeros((SURFACE_POINTS_NUMBER, EXPECT_OUTSIDE_POINTS_NUMBER))
         c = self.c
         for i in range(SURFACE_POINTS_NUMBER):
@@ -302,10 +272,10 @@ class matrixProcess(Point):
         self.KBE = KBE
         return(KBE)
 
-    def CalculatePsimatrix(self): #1
+    def CalculatePsimatrix(self): 
         Psi_matrix = np.zeros((EXPECT_OUTSIDE_POINTS_NUMBER,POINTS_NUMBER))
         c = self.c
-        ##gai
+
         matrix_square = np.sum(self.points.points_array ** 2, axis=1).reshape(1,POINTS_NUMBER)
         matrix_square_expect_outside_points = np.sum(self.points.expect_outside_points_array ** 2, axis=1).reshape(EXPECT_OUTSIDE_POINTS_NUMBER,1)
         matrix_square_sum = matrix_square + matrix_square_expect_outside_points
@@ -314,17 +284,7 @@ class matrixProcess(Point):
         
         Psi_matrix = (matrix_minus_squere_sum +  c ** 2)**0.5
         self.Psi_matrix = Psi_matrix
-        '''
-        for i in range(EXPECT_OUTSIDE_POINTS_NUMBER):
-            xi = self.points.expect_outside_points[i].x
-            yi = self.points.expect_outside_points[i].y
-            for j in range(POINTS_NUMBER):
-                xj = self.points.points[j].x
-                yj = self.points.points[j].y
-                
-                Psi_matrix1[i][j] = (((xi - xj) ** 2 + (yi - yj) ** 2 + c ** 2) ** 0.5)
-        '''
-        #self.Psi_matrix = Psi_matrix
+
         return(Psi_matrix)
     
     def CalculateAll(self):
@@ -360,8 +320,7 @@ class matrixProcess(Point):
         return(self)    
 
 def Solve(c,a,xi,yi,i,integrate_matrix_list):
-    #xi = initialPoints.points[i].x
-    #yi = initialPoints.points[i].y
+
     f = lambda y, x: (((x - xi) ** 2 + (y - yi) ** 2 + c ** 2) ** 0.5)
     result = integrate.dblquad(f,0,a,0,a)
     integrate_matrix_list[i] = [result[0]]
@@ -382,23 +341,95 @@ def IntegrateCoefficientMatrix(initialPoints):
     p.join()
     integrate_matrix = np.array(integrate_matrix_list).T
     return(integrate_matrix)
-        
+       
+class DrawAndData():
+    points = Points()
+    x_values = np.zeros((1,1))
+    y_values = np.zeros((1,1))
+    Z = 0.0
+
+    x_mean = np.zeros((1,1))
+    y_mean = np.zeros((1,1))
+
+    x_var = np.zeros((1,1))
+    y_var = np.zeros((1,1))
+
+    file_name = ''
+
+    def __init__(self, points):
+        self.points = points
+        self.x_values = self.points.points_array[:,0]
+        self.y_values = self.points.points_array[:,1]
+
+        self.x_mean = np.mean(self.x_values)
+        self.y_mean = np.mean(self.y_values)
+
+        self.x_var = np.var(self.x_values)
+        self.y_var = np.var(self.y_values)
+
+        self.file_name = 'data/a_%d_inner_%d_outside_%d_c_%d/'%(a_constant, INNER_POINTS_NUMBER, OUTSIDE_POINTS_NUMBER, c_constant)
+
+    def CalculateZ(self, a_matrix):
+        X = np.arange(0, 50, 1)
+        Y = np.arange(0, 50, 1)
+        X, Y = np.meshgrid(X, Y)
+
+        z_val = np.array(a_matrix)[:,0]
+        for i in range (0,POINTS_NUMBER):
+            self.Z = self.Z + z_val[i] * ((X - self.x_values[i]) ** 2 + (Y - self.y_values[i]) ** 2 + 1) ** 0.5 
+
+    def PlotRandomPoint(self):
+    
+        plt.scatter(self.x_values,self.y_values)
+        plt.xlim((-10,60))
+        plt.ylim((-10,60))
+        file_name = FILE_NAME + '/_Random.png'
+        plt.savefig(file_name)
+
+        plt.close()
+
+    def PlotNeutronFlux(self):
+        fig = plt.figure()
+        ax = Axes3D(fig)
+
+        X = np.arange(0, 50, 1)
+        Y = np.arange(0, 50, 1)
+        X, Y = np.meshgrid(X, Y)
+        z_val = np.array(a_matrix)[:,0]
+
     
 
-if __name__ == '__main__':
-   
+       
+
+        ax.plot_surface(X, Y, self.Z)
+        plt.show()
+    
+    def PlotHeat(self):
+        plt.imshow(self.Z,interpolation = 'nearest' , cmap = 'jet')
+        plt.colorbar()
+        file_name = FILE_NAME + '/_Heat.png'
+        plt.savefig(file_name)
+
+        plt.close()
+
+    def FileOutput(self, lamda):
+        file_name = self.file_name + '_data.csv'
+
+        with open(file_name,'a+') as f:
+            csv_write = csv.writer(f)
+            data_row = ["x:",self.x_var,self.x_mean,"y:",self.y_var,self.y_mean,"lamda:",lamda]
+        
+            csv_write.writerow(data_row)
+
+    
+
+def main():   
     initial_time = time.time()
     initial_points = PointProcess().setPoint(INNER_POINTS_NUMBER,SURFACE_POINTS_NUMBER,OUTSIDE_POINTS_NUMBER)
-    
-    #随机点绘图
-    x_values = initial_points.points_array[:,0]
-    y_values = initial_points.points_array[:,1]
-    
-    plt.scatter(x_values,y_values)
-    plt.xlim((-10,60))
-    plt.ylim((-10,60))
-    plt.show()
-    
+
+    draw = DrawAndData(initial_points)
+    draw.PlotRandomPoint()
+
     print('PointProcess %f'%(time.time() - initial_time))
     time1 = time.time()
     matrix = matrixProcess(initial_points, c_constant).CalculateAll()
@@ -414,20 +445,17 @@ if __name__ == '__main__':
 
     print('solve Process %f'%(time.time() - time2))
     a_matrix_before = np.ones((POINTS_NUMBER,1))
-    #gai!!!
+
     
 
-    for i in range(200000):
+    for i in range(1000):
         a_matrix = x / lamda * np.dot(matrix.inv_coefficient_matrix, f_matrix_before)  #A matrix
-        #print(a_matrix)
 
         f_matrix_no_zeros = nu * Sigma_f * np.dot(matrix.Psi_matrix, a_matrix)
         f_matrix = np.vstack((f_matrix_no_zeros,np.zeros((OUTSIDE_POINTS_NUMBER,1))))
-        #gai!!!!!
+
         lamda = lamda_before *(np.dot(integrate_coefficient_matrix, a_matrix) / np.dot(integrate_coefficient_matrix, a_matrix_before))
-        #gai!!!
-        #if lamda[0][0] == np.nan:
-        #    lamda = lamda_before
+
         print(lamda)
         
         f_matrix_before = f_matrix
@@ -436,41 +464,37 @@ if __name__ == '__main__':
             break
         lamda_before = lamda
 
-    #中子通量密度绘图
-    fig = plt.figure()
-    ax = Axes3D(fig)
+    draw.CalculateZ(a_matrix)
+    draw.PlotHeat()
+    draw.FileOutput(lamda)
 
-    X = np.arange(0, 50, 1)
-    Y = np.arange(0, 50, 1)
-    X, Y = np.meshgrid(X, Y)
-    z_val = np.array(a_matrix)[:,0]
-    Z = 0.0
-    
-    for i in range (0,POINTS_NUMBER):
-        Z = Z + z_val[i]*((X - x_values[i])**2 + (Y - y_values[i])**2 + 1)**0.5 
-    ax.plot_surface(X, Y, Z)
-    plt.show()
+def FlushConstant(innerPointsNumber,surfacePointsNumber,times):
+    global INNER_POINTS_NUMBER
+    global SURFACE_POINTS_NUMBER 
+    global OUTSIDE_POINTS_NUMBER
+    global EXPECT_OUTSIDE_POINTS_NUMBER
+    global POINTS_NUMBER
+    global FILE_NAME
 
-    #热图
-    
-    plt.imshow(Z,interpolation = 'nearest' , cmap = 'jet')
-    plt.colorbar()
-    plt.show()
-    
-    #数据统计，方差，均值
-    x_mean = np.mean(x_values)
-    y_mean = np.mean(y_values)
+    INNER_POINTS_NUMBER = INNER_POINTS_NUMBER_LIST[i]
+    SURFACE_POINTS_NUMBER = SURFACE_POINTS_NUMBER_LIST[j]
+    OUTSIDE_POINTS_NUMBER = SURFACE_POINTS_NUMBER_LIST[j]
+    EXPECT_OUTSIDE_POINTS_NUMBER = INNER_POINTS_NUMBER + SURFACE_POINTS_NUMBER
+    POINTS_NUMBER = INNER_POINTS_NUMBER + SURFACE_POINTS_NUMBER + OUTSIDE_POINTS_NUMBER
+    if not os.path.exists('data/a_%d_inner_%d_outside_%d_c_%d/%d'%(a_constant, INNER_POINTS_NUMBER, OUTSIDE_POINTS_NUMBER, c_constant,times)):
+            os.makedirs('data/a_%d_inner_%d_outside_%d_c_%d/%d'%(a_constant, INNER_POINTS_NUMBER, OUTSIDE_POINTS_NUMBER, c_constant,times))
 
-    x_var = np.var(x_values)
-    y_var = np.var(y_values)
+    FILE_NAME = 'data/a_%d_inner_%d_outside_%d_c_%d/%d'%(a_constant, INNER_POINTS_NUMBER, OUTSIDE_POINTS_NUMBER, c_constant,times)
 
-    with open('b.csv','a+') as f:
-        csv_write = csv.writer(f)
-        data_row = ["x:",x_var,x_mean,"y:",y_var,y_mean,"la:",lamda]
-        
-        csv_write.writerow(data_row)
 
-    
-    np.savetxt('a.csv', a_matrix, delimiter = ',')
-     
+INNER_POINTS_NUMBER_LIST = [c for c in range(50,1000,50)] + [c for c in range(1000,4100,100)]
+SURFACE_POINTS_NUMBER_LIST = [10] + [c for c in range(25,100,25)] + [c for c in range(100,4050,50)]
+for i in range(len(INNER_POINTS_NUMBER_LIST)):
+    for j in range(len(SURFACE_POINTS_NUMBER_LIST)):
+        for times in range(10):     
+            if __name__ == '__main__':
+
+                FlushConstant(INNER_POINTS_NUMBER_LIST[i],SURFACE_POINTS_NUMBER_LIST[j],times)           
+
+                main()
 
