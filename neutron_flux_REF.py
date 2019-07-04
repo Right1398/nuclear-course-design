@@ -391,7 +391,7 @@ class DrawAndData():
 
         plt.close()
 
-    def PlotNeutronFlux(self):
+    def PlotNeutronFlux(self,a_matrix):
         fig = plt.figure()
         ax = Axes3D(fig)
 
